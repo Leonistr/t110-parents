@@ -48,6 +48,31 @@ label{font-size:14px;color:var(--muted);display:block;margin-bottom:6px}
 .stat{background:var(--bg);border-radius:12px;padding:10px 6px;text-align:center}
 .stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
 .stat span{font-size:11.5px;color:var(--muted)}
+.status{margin-top:12px;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.status .badge{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:18px;letter-spacing:.02em}
+.status .badge .ic{font-size:22px;line-height:1}
+.status .why{font-size:13px;opacity:.85}
+.status ul{margin:2px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.status li{display:flex;justify-content:space-between;gap:10px;font-size:14px;background:color-mix(in srgb,var(--card) 70%,transparent);border-radius:8px;padding:6px 10px}
+.status li b{font-variant-numeric:tabular-nums;color:var(--g2)}
+.st-ex{background:linear-gradient(135deg,#dcfce7,#fef3c7);color:#166534;border:1.5px solid #eab308}
+.st-good{background:#dbeafe;color:#1e40af;border:1.5px solid #60a5fa}
+.st-c{background:#ffedd5;color:#9a3412;border:1.5px solid #fb923c}
+@media (prefers-color-scheme:dark){
+ .st-ex{background:linear-gradient(135deg,#14532d99,#713f1299);color:#fde68a;border-color:#ca8a04}
+ .st-good{background:#1e3a8a88;color:#bfdbfe;border-color:#3b82f6}
+ .st-c{background:#7c2d1288;color:#fed7aa;border-color:#f97316}
+}
+.lvl{display:inline-block;margin-top:5px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid}
+.lvl.st-ex{background:#fef9c3;color:#166534;border-color:#eab308}
+.lvl.st-good{background:#dbeafe;color:#1e40af;border-color:#60a5fa}
+.lvl.st-c{background:#ffedd5;color:#9a3412;border-color:#fb923c}
+.lvl.st-none{background:transparent;color:var(--muted);border-color:var(--line);font-weight:500}
+@media (prefers-color-scheme:dark){
+ .lvl.st-ex{background:#713f1299;color:#fde68a;border-color:#ca8a04}
+ .lvl.st-good{background:#1e3a8a88;color:#bfdbfe;border-color:#3b82f6}
+ .lvl.st-c{background:#7c2d1288;color:#fed7aa;border-color:#f97316}
+}
 @media (max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}}
 h2{font-size:17px;margin:0 0 10px}
 .chart svg{width:100%;height:auto;display:block}
@@ -110,6 +135,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
         </div>
         <button class="btn ghost" id="out" type="button">Выйти</button>
       </div>
+      <div id="status" class="status hidden" role="status"></div>
       <div class="stats">
         <div class="stat"><b id="sAvg"></b><span>средний балл</span></div>
         <div class="stat"><b id="sCnt"></b><span>оценок</span></div>
@@ -118,10 +144,10 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
       </div>
     </div>
     <div class="card chart">
-      <h2>Средний балл по предметам</h2>
+      <h2>Средний балл по предметам</h2><p class="note" style="margin:-4px 0 8px">Цвет оценок в карточках: 90+ зелёный, 75–89 голубой, 60–74 жёлтый, ниже 60 красный.</p>
       <div id="chart"></div>
       <div class="legend">
-        <span class="c5">90–100</span><span class="c4">75–89</span><span class="c3">60–74</span><span class="c2">ниже 60</span><span class="cn">Н — пропуск</span>
+        <span class="c5">90+ отлично</span><span class="c4">70–89 хорошо</span><span class="c3">60–69</span><span class="c2">ниже 60</span><span class="cn">Н — пропуск</span>
       </div>
     </div>
     <div class="toolbar">
@@ -146,6 +172,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const cls = v => v === "Н" ? "cn" : typeof v !== "number" ? "c0" : v >= 90 ? "c5" : v >= 75 ? "c4" : v >= 60 ? "c3" : "c2";
+  const avgCls = v => v == null ? "c0" : v >= 90 ? "c5" : v >= 70 ? "c4" : v >= 60 ? "c3" : "c2"; // уровень по среднему
   const fmt = v => v == null ? "—" : (Math.round(v * 10) / 10).toString().replace(".", ",");
 
   async function fileId(iin) {
@@ -185,7 +212,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Средний балл по предметам">`;
     for (const x of [60, 75, 90]) { const X = labW + barW * x / 100; s += `<line x1="${X}" x2="${X}" y1="0" y2="${H}" stroke="currentColor" stroke-opacity=".12" stroke-dasharray="3 3"/>`; }
     list.forEach((it, i) => {
-      const y = i * rowH + 4, w = Math.max(2, barW * it.avg / 100), c = cls(it.avg).slice(1);
+      const y = i * rowH + 4, w = Math.max(2, barW * it.avg / 100), c = avgCls(it.avg).slice(1);
       const col = {"5": "var(--g5)", "4": "var(--g4)", "3": "var(--g3)", "2": "var(--g2)"}[c];
       const nm = it.short || it.subject, lab = nm.length > 17 ? nm.slice(0, 16) + "…" : nm;
       s += `<text x="${labW - 6}" y="${y + 14}" text-anchor="end"><title>${esc(it.subject)}</title>${esc(lab)}</text>`;
@@ -196,7 +223,10 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
     return s + "</svg>";
   }
 
+  const level = a => a == null ? ["st-none", "Нет оценок"] : a >= 90 ? ["st-ex", "Отличник"] : a >= 70 ? ["st-good", "Хорошист"] : ["st-c", "Троечник"];
+
   function card(s) {
+    const lv = level(s.avg);
     const chips = s.items.length ? s.items.map(([d, v]) =>
       `<div class="chip ${cls(v)}" title="${esc(d)}"><b>${esc(typeof v === "number" ? fmt(v) : v)}</b><i>${esc(d)}</i></div>`).join("")
       : `<span class="note">${s.lessons ? "Оценок пока нет" : "Занятий пока не было"}</span>`;
@@ -205,8 +235,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
       : '<span class="none">Замечаний нет</span>';
     const nGrades = s.items.filter(x => typeof x[1] === "number").length;
     return `<details class="subj"${allOpen ? " open" : ""}><summary>
-      <div class="sname"><b>${esc(s.subject)}</b><small>${esc(s.teacher)}</small></div>
-      <div class="avg ${s.avg == null ? "c0" : cls(s.avg)}">${fmt(s.avg)}</div><span class="chev">›</span></summary>
+      <div class="sname"><b>${esc(s.subject)}</b><small>${esc(s.teacher)}</small><span class="lvl ${lv[0]}">${lv[1]}</span></div>
+      <div class="avg ${avgCls(s.avg)}">${fmt(s.avg)}</div><span class="chev">›</span></summary>
       <div class="body"><div class="meta"><span>Оценок: ${nGrades}</span><span>Ниже 60: ${s.low}</span><span>Пропусков «Н»: ${s.n}</span></div>
       <div class="chips">${chips}</div><div class="rem"><b>Замечания</b><br>${rem}</div></div></details>`;
   }
@@ -221,12 +251,29 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
     $("subjects").innerHTML = subs.map(card).join("");
   }
 
+  function renderStatus() {
+    const el = $("status"), graded = DATA.subjects.filter(s => s.avg != null);
+    let st = DATA.status;
+    if (st === undefined) st = !graded.length ? null : graded.every(s => s.avg >= 90) ? "Отличник" : graded.every(s => s.avg >= 70) ? "Хорошист" : "Троечник";
+    if (!st) { el.className = "status hidden"; el.innerHTML = ""; return; }
+    const cfg = {"Отличник": ["st-ex", "🏆", "Средний балл 90+ по всем предметам"],
+                 "Хорошист": ["st-good", "👍", "Средний балл 70+ по всем предметам"],
+                 "Троечник": ["st-c", "⚠️", "Есть предметы со средним баллом ниже 70 — на них стоит обратить внимание:"]}[st];
+    let h = `<div class="badge"><span class="ic" aria-hidden="true">${cfg[1]}</span>${esc(st)}</div><div class="why">${cfg[2]}</div>`;
+    if (st === "Троечник") {
+      const weak = DATA.weak || graded.filter(s => s.avg < 70).sort((a, b) => a.avg - b.avg);
+      h += "<ul>" + weak.map(w => `<li><span>${esc(w.subject)}</span><b>${fmt(w.avg)}</b></li>`).join("") + "</ul>";
+    }
+    el.className = "status " + cfg[0]; el.innerHTML = h;
+  }
+
   function render() {
     $("vName").textContent = DATA.name;
     $("vSub").textContent = `Группа ${DATA.group} · обновлено ${DATA.updated}`;
     $("sAvg").textContent = fmt(DATA.avg); $("sCnt").textContent = DATA.grades;
     $("sLow").textContent = DATA.low; $("sN").textContent = DATA.n;
     $("chart").innerHTML = chart(DATA.subjects);
+    renderStatus();
     renderSubjects();
     $("login").classList.add("hidden"); $("view").classList.remove("hidden");
     window.scrollTo(0, 0);
