@@ -181,13 +181,13 @@ footer{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
   function chart(subs) {
     const list = subs.filter(s => s.avg != null).sort((a, b) => b.avg - a.avg);
     if (!list.length) return '<p class="note">Оценок пока нет.</p>';
-    const rowH = 26, labW = 128, W = 360, barW = W - labW - 40, H = list.length * rowH + 6;
+    const rowH = 26, labW = 118, W = 360, barW = W - labW - 40, H = list.length * rowH + 6;
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Средний балл по предметам">`;
     for (const x of [60, 75, 90]) { const X = labW + barW * x / 100; s += `<line x1="${X}" x2="${X}" y1="0" y2="${H}" stroke="currentColor" stroke-opacity=".12" stroke-dasharray="3 3"/>`; }
     list.forEach((it, i) => {
       const y = i * rowH + 4, w = Math.max(2, barW * it.avg / 100), c = cls(it.avg).slice(1);
       const col = {"5": "var(--g5)", "4": "var(--g4)", "3": "var(--g3)", "2": "var(--g2)"}[c];
-      const lab = it.subject.length > 19 ? it.subject.slice(0, 18) + "…" : it.subject;
+      const nm = it.short || it.subject, lab = nm.length > 17 ? nm.slice(0, 16) + "…" : nm;
       s += `<text x="${labW - 6}" y="${y + 14}" text-anchor="end"><title>${esc(it.subject)}</title>${esc(lab)}</text>`;
       s += `<rect x="${labW}" y="${y + 2}" width="${barW}" height="16" rx="5" fill="currentColor" fill-opacity=".07"/>`;
       s += `<rect x="${labW}" y="${y + 2}" width="${w}" height="16" rx="5" fill="${col}"/>`;
